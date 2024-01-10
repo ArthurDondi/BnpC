@@ -63,7 +63,8 @@ def _get_col_order(assignment):
 
 
 def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
-            assignment=np.array([]), metric='correlation', row_cl=True):
+            assignment=np.array([]), metric='correlation', row_cl=True,
+            ctypes=pd.Series(), scDNA=pd.Series()):
 
     data = data_in.copy()
     data_raw = data_raw_in.copy()
@@ -71,9 +72,13 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
     height = int(data.shape[0] // 5)
     width = int(data.shape[1] // 10)
 
+    if width > 50:
+        width=50
+    if height < 10:
+        height=10
+
     if len(assignment) > 0:
         col_order = _get_col_order(assignment)
-
         clusters, cl_cnt = np.unique(assignment, return_counts=True)
 
         if clusters.size > len(COLORS):
@@ -92,6 +97,15 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
                 
         cluster_cols = pd.Series(col_dict, name='clusters', index=col_order)
 
+        ctypes = ctypes.reindex([ctypes.index[i] for i in col_order])
+        #ctypes.index = pd.Categorical(ctypes.index, col_order)
+        #ctypes.index.name='idx'
+        #ctypes = ctypes.sort_values('idx')
+        ctypes_cols = ctypes['CellTypes']
+
+        print(cluster_cols)
+        print(ctypes_cols)
+
         data.columns = np.arange(data_in.shape[1])
         data = data[col_order]
 
@@ -102,24 +116,48 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
             x_labels = data_raw_in.columns[col_order]
         else:
             x_labels = data_in.columns[col_order]
+
+        cmap = plt.get_cmap('Reds', 100)
+
+        cmap.set_over('green')
+        cmap.set_bad('grey')
     else:
         x_labels = data_in.columns
+        cluster_cols = ctypes['CellTypes']
+        ctypes_cols = ctypes['CellTypes']
+        cmap = plt.get_cmap('Reds', 100)
 
-    if row_cl:
+        cmap.set_over('green')
+        cmap.set_bad('grey')
+    '''
+    if len(assignment) > 0:
         Z = linkage(data.fillna(3), 'complete')
         row_order = dendrogram(Z, truncate_mode=None)['leaves']
-
-        data = data.iloc[row_order]
+        data = data.reindex([data.index[i] for i in row_order])
+        print(data.head())
+        print(scDNA.head())
         if not data_raw.empty:
             data_raw = data_raw.iloc[row_order]
-    else:
-        row_order = np.arange(data.shape[0])
+    '''
 
+    scDNA = scDNA.reindex(data.index)
+    ''''
+    else:
+        print(data.head(10))
+        print(scDNA.head(10))
+        scDNA['Diff'] = scDNA['scDNASupport_Tumor'].replace(np.nan,0) - scDNA['scDNASupport_NonTumor'].replace(np.nan,0)
+        scDNA = scDNA.sort_values(by=['Diff'], ascending = False)
+        data = data.reindex(scDNA.index)
+    '''
+
+    scDNASupport_Tumor = scDNA['TumorColor']
+    scDNASupport_NonTumor = scDNA['NonTumorColor']
+
+    '''
     if not data_raw.empty and data_raw.shape[0] < 300 and data_raw.shape[1] < 300:
         annot = pd.DataFrame(
             np.full(data_raw.shape, '', dtype=str),
-            index=data.index, columns=data.columns
-        )
+            index=data.index, columns=
         if data.min().min() < 0:
             annot[(data.round() == -1) & (data_raw == 1)] = 'o'
         else:
@@ -128,19 +166,15 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
         annot[data_raw.isnull()] = '-'
     else:
         annot = False
-
-    # cmap = plt.get_cmap('bwr', 100)
-    # cmap = plt.get_cmap('Reds', 100)
-    cmap = plt.get_cmap('Reds', 2)
-
-    cmap.set_over('green')
-    cmap.set_bad('grey')
-
+    '''
+    annot = False
     cm = sns.clustermap(
-        data, annot=annot, square=False, vmin=0, vmax=1, cmap=cmap, fmt='',
-        linewidths=0, linecolor='lightgray', col_colors=cluster_cols,
-        col_cluster=False, row_cluster=False, figsize=(width, height)#, col_colors_ratio=0.15
+        data, annot=annot, square=False, vmin=0, vmax=1, cmap=cmap, fmt='', linewidths=0, linecolor='lightgray',
+        col_colors=[cluster_cols,ctypes_cols], row_colors= [scDNASupport_Tumor,scDNASupport_NonTumor],
+        col_cluster=False, row_cluster=False, figsize=(width, height), colors_ratio=(0.05, 0.15)
     )
+
+    plt.rcParams["axes.grid"] = False
 
     cm.cax.set_visible(False)
     cm.ax_row_dendrogram.set_visible(False)
@@ -155,15 +189,33 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
     cm.ax_heatmap.set_xticklabels(x_labels, rotation=90, fontsize=8)
     cm.ax_heatmap.set_yticklabels(data.index, fontsize=8)
 
-
+    '''
     try:
         cm.gs.set_width_ratios([0, 1])
         cm.gs.set_height_ratios([0, 0.05, 0.95])
-    except ValueError:
-        cm.gs.set_width_ratios([0, 0, 1])
-        cm.gs.set_height_ratios([0, 0, 0.05, 0.95])
-    cm.gs.update(left=0, bottom=0.05, right=1, top=0.95)
+    
+    print(cm.gs.get_width_ratios())
+    print(cm.gs.get_height_ratios())
+    '''
 
+    if data_in.shape[0]<15:
+        hratio = .35
+    else:
+        hratio = .15
+
+    try:
+        cm.gs.set_width_ratios([0, 0.05, 1])
+        cm.gs.set_height_ratios([0, hratio, hratio, 0.95])
+    
+    except ValueError:
+        cm.gs.set_width_ratios([0, 0.05, 1])
+        cm.gs.set_height_ratios([hratio, hratio, 0.95])
+
+
+    cm.gs.update(left=0, bottom=0.05, right=1, top=0.95)
+    cm.gs.update(wspace=0)
+
+    cm.ax_heatmap.grid(False)
     if not out_file:
         plt.show()
     elif data.shape[0] < 50:
@@ -173,6 +225,9 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
     else:
         cm.savefig(out_file, dpi=100)
     plt.close()
+
+    data.to_csv('{}.tsv'.format(out_file), sep = '\t')
+
 
 
 def plot_traces(results, out_file=None, burn_in=0):
@@ -387,4 +442,5 @@ def load_txt(path):
 
 if __name__ == '__main__':
     print('Here be dragons...')
+
 

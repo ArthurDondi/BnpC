@@ -24,7 +24,7 @@ except ModuleNotFoundError:
 # INPUT - DATA
 # ------------------------------------------------------------------------------
 
-def load_data(in_file, transpose=True, get_names=False):
+def load_data_old(in_file, transpose=True, get_names=False):
     lines = []
 
     # Get first fine lines to determine if col/row names are provided
@@ -97,6 +97,49 @@ def load_data(in_file, transpose=True, get_names=False):
     else:
         return df.values
 
+def load_data(in_file, ctypes ,transpose=True, get_names=False):
+    sep = '\t'
+
+    df_frac = pd.read_csv(in_file, sep=sep, index_col=0)
+    l = [i for i in ctypes['barcodes'] if i in df_frac.columns]
+    df_frac = df_frac[l]
+    df_frac = df_frac.T
+    df_frac.replace(3, np.nan, inplace=True)
+
+    df = pd.read_csv(in_file, sep=sep, index_col=0)
+
+    fracs = {}
+    #reading mutation fraction
+    for i in df.index:
+        fracs[i] = max([float(j) for j in i.split('_')[1:]])
+
+    df.replace(3, -1, inplace=True)
+
+    #making data binary based on mut frac
+    for idx, row in df.iterrows():
+        for x in df.columns:
+            threshold = fracs[idx] - 0.3
+            if threshold < 0.3:
+                threshold = 0.3
+            if row[x] >= threshold:
+                df.at[idx,x] = 1
+            elif 0 <= row[x] < threshold:
+                df.at[idx,x] = 0
+    df.replace(-1, np.nan, inplace=True)
+
+    l = [i for i in ctypes['barcodes'] if i in df.columns]
+    df = df[l]
+    df.to_csv('BnpC_input.tsv', sep='\t')
+    df = df.T
+
+    #df.replace(3, np.nan, inplace=True)
+    # replace homozygos mutations with heterozygos
+    df.replace(2, 1, inplace=True)
+    print(df.head())
+    if get_names:
+        return df.values, df_frac.values, (df.index.values, df.columns.values)
+    else:
+        return df.values, df_frac.values
 
 def load_txt(path):
     try:
@@ -267,16 +310,35 @@ def save_similarity(args, inferred, results, out_dir):
         pl.plot_similarity(sim, sim_file, attachments)
 
 
-def save_geno_plots(data, data_raw, out_dir, names):
+def save_geno_plots(data, data_raw, data_frac, out_dir, names, ctypes, scDNA):
     for chain, data_chain in data.items():
         for est, data_est in data_chain.items():
             out_file = os.path.join(
                 out_dir, f'genoCluster_{est}_{chain:0>2}.pdf')
+            out_file_raw = os.path.join(
+                out_dir, f'genoCluster_{est}_{chain:0>2}_raw.pdf')
+            out_file_ctype = os.path.join(
+                out_dir, f'genoCluster_Ctype_{est}_{chain:0>2}.pdf')
+            out_file_raw_ctype = os.path.join(
+                out_dir, f'genoCluster_Ctype_{est}_{chain:0>2}_raw.pdf')
 
             df_obs = pd.DataFrame(data_raw, index=names[0], columns=names[1]).T
+            df_frac = pd.DataFrame(data_frac, index=names[0], columns=names[1]).T
             pl.plot_raw_data(
                 data_est['genotypes'], df_obs, assignment=data_est['assignment'],
-                out_file=out_file
+                out_file=out_file, ctypes=ctypes, scDNA=scDNA
+            )
+            pl.plot_raw_data(
+                df_frac, df_frac, assignment=data_est['assignment'],
+                out_file=out_file_raw, ctypes=ctypes, scDNA=scDNA
+            )
+            pl.plot_raw_data(
+                data_est['genotypes'], df_obs,
+                out_file=out_file_ctype, ctypes=ctypes, scDNA=scDNA
+            )
+            pl.plot_raw_data(
+                df_frac, df_frac,
+                out_file=out_file_raw_ctype, ctypes=ctypes, scDNA=scDNA
             )
 
 

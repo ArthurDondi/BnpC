@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import pandas as pd
 from datetime import datetime
 
 from libs.MCMC import MCMC as MCMC
@@ -53,6 +54,14 @@ def parse_args():
     parser.add_argument(
         '--debug', action='store_true', default=False,
         help='Run single chain in main python thread for debugging with pdb.'
+    )
+    parser.add_argument(
+        '--ctypes', type=str,
+        help='Absolute or relative path(s) to input barcode-to-ctype file'
+    )
+    parser.add_argument(
+        '--scDNA', type=str,
+        help='Absolute or relative path(s) to input scDNA validation file'
     )
 
     model = parser.add_argument_group('model')
@@ -200,7 +209,7 @@ def parse_args():
 # INIT AND OUTPUT FUNCTIONS
 # ------------------------------------------------------------------------------
 
-def generate_output(args, results, data_raw, names):
+def generate_output(args, results, data_raw, data_frac, names, ctypes, scDNA):
     out_dir = io._get_out_dir(args)
     inferred = io._infer_results(args, results, data_raw)
     
@@ -225,25 +234,39 @@ def generate_output(args, results, data_raw, names):
         exit()
 
     # Generate plots
+    '''
     io.save_trace_plots(results, out_dir)
     if args.tree:
         io.save_tree_plots(
             args.tree, inferred, out_dir, args.transpose
         )
     io.save_similarity(args, inferred, results, out_dir)
+    '''
     if args.true_data:
-        io.save_geno_plots(inferred, data_true, out_dir, names)
+        io.save_geno_plots(inferred, data_true, data_frac, out_dir, names, ctypes, scDNA)
     else:
-        io.save_geno_plots(inferred, data_raw, out_dir, names)
+        io.save_geno_plots(inferred, data_raw, data_frac, out_dir, names, ctypes, scDNA)
 
 
 def main(args):
-    io.process_sim_folder(args, suffix='')
-    data, data_names = io.load_data(
-        args.input, transpose=args.transpose, get_names=True
-    )
+    ctypes = args.ctypes
+    ctypes_df = pd.read_csv(ctypes, sep='\t')
+    ctypes_categ = ["HGSOC", "Mesothelial.cells", "Fibroblasts", "T.NK.cells", "Myeloid.cells", "B.cells", "Endothelial.cells"]
+    ctypes_df['celltype_final'] = pd.Categorical(ctypes_df['celltype_final'], ctypes_categ)
+    ctypes_df  = ctypes_df.sort_values(by = ['biopsy', 'celltype_final'], ascending=[False,True])
+    ctypes_df['CellTypes'] = ctypes_df['Color']
+    ctypes_df = ctypes_df.reset_index()
 
-    if args.falsePositive > 0 and args.falseNegative > 0:
+    scDNA_df = pd.read_csv(args.scDNA, sep='\t', index_col=0)
+
+    io.process_sim_folder(args, suffix='')
+    data, data_frac, data_names = io.load_data(
+        args.input, ctypes_df, transpose=args.transpose, get_names=True
+    )
+    ctypes_df = ctypes_df[ctypes_df['barcodes'].isin(data_names[0])]
+    if len(ctypes_df)==0:
+        sys.exit()
+    if args.falsePositive >= 0 and args.falseNegative >= 0:
         args.error_update_prob = 0
         import libs.CRP as CRP
         BnpC = CRP.CRP(
@@ -284,7 +307,7 @@ def main(args):
     results = mcmc.get_results()
     args.time.append(datetime.now())
 
-    generate_output(args, results, data, data_names)
+    generate_output(args, results, data, data_frac, data_names, ctypes_df, scDNA_df)
 
 
 if __name__ == '__main__':
