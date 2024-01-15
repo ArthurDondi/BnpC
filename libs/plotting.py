@@ -68,14 +68,16 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
 
     data = data_in.copy()
     data_raw = data_raw_in.copy()
-
+    '''
     height = int(data.shape[0] // 5)
     width = int(data.shape[1] // 10)
-
     if width > 50:
         width=50
     if height < 10:
         height=10
+    '''
+    height = int(data.shape[0] // 7)
+    width = 18
 
     if len(assignment) > 0:
         col_order = _get_col_order(assignment)
@@ -101,7 +103,8 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
         #ctypes.index = pd.Categorical(ctypes.index, col_order)
         #ctypes.index.name='idx'
         #ctypes = ctypes.sort_values('idx')
-        ctypes_cols = ctypes['CellTypes']
+
+        print(cluster_cols)
 
         data.columns = np.arange(data_in.shape[1])
         data = data[col_order]
@@ -118,14 +121,49 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
 
         cmap.set_over('green')
         cmap.set_bad('grey')
+
+        ctypes_cols = ctypes['CellTypes']
+        ctypes_cor_cols = ctypes['Colors_corrected']
+
+
+        data.index = [i.split('_')[0] for i in data.index]
+        scDNA.index = [i.split('_')[0] for i in scDNA.index]
+        scDNA = scDNA.reindex(data.index)
+
+        scDNASupport_Tumor = scDNA['TumorColor']
+        scDNASupport_NonTumor = scDNA['NonTumorColor']
+
+        annot = False
+        cm = sns.clustermap(
+            data, annot=annot, square=False, vmin=0, vmax=1, cmap=cmap, fmt='', linewidths=0, linecolor='lightgray',
+            col_colors=[ctypes_cols,ctypes_cor_cols,cluster_cols], row_colors= [scDNASupport_Tumor,scDNASupport_NonTumor],
+            col_cluster=False, row_cluster=False, figsize=(width, height), colors_ratio=(0.3, 0.3)
+    )
+
     else:
         x_labels = data_in.columns
-        cluster_cols = ctypes['CellTypes']
-        ctypes_cols = ctypes['CellTypes']
-        cmap = plt.get_cmap('Reds', 100)
 
+        ctypes_cols = ctypes['CellTypes']
+        ctypes_cor_cols = ctypes['Colors_corrected']
+
+        data.index = [i.split('_')[0] for i in data.index]
+        scDNA.index = [i.split('_')[0] for i in scDNA.index]
+        scDNA = scDNA.reindex(data.index)
+
+        scDNASupport_Tumor = scDNA['TumorColor']
+        scDNASupport_NonTumor = scDNA['NonTumorColor']
+
+
+
+        cmap = plt.get_cmap('Reds', 100)
         cmap.set_over('green')
         cmap.set_bad('grey')
+        annot = False
+        cm = sns.clustermap(
+            data, annot=annot, square=False, vmin=0, vmax=1, cmap=cmap, fmt='', linewidths=0, linecolor='lightgray',
+            col_colors=[ctypes_cols,ctypes_cor_cols], row_colors= [scDNASupport_Tumor,scDNASupport_NonTumor],
+            col_cluster=False, row_cluster=False, figsize=(width, height), colors_ratio=(0.12, 0.14)
+        )
     '''
     if len(assignment) > 0:
         Z = linkage(data.fillna(3), 'complete')
@@ -137,7 +175,7 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
             data_raw = data_raw.iloc[row_order]
     '''
 
-    scDNA = scDNA.reindex(data.index)
+    #scDNA = scDNA.reindex(data.index)
     ''''
     else:
         print(data.head(10))
@@ -145,12 +183,14 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
         scDNA['Diff'] = scDNA['scDNASupport_Tumor'].replace(np.nan,0) - scDNA['scDNASupport_NonTumor'].replace(np.nan,0)
         scDNA = scDNA.sort_values(by=['Diff'], ascending = False)
         data = data.reindex(scDNA.index)
-    '''
+
+    ctypes_cols = ctypes['CellTypes']
+    ctypes_cor_cols = ctypes['Colors_corrected']
 
     scDNASupport_Tumor = scDNA['TumorColor']
     scDNASupport_NonTumor = scDNA['NonTumorColor']
 
-    '''
+
     if not data_raw.empty and data_raw.shape[0] < 300 and data_raw.shape[1] < 300:
         annot = pd.DataFrame(
             np.full(data_raw.shape, '', dtype=str),
@@ -163,15 +203,15 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
         annot[data_raw.isnull()] = '-'
     else:
         annot = False
-    '''
+    
     annot = False
     cm = sns.clustermap(
         data, annot=annot, square=False, vmin=0, vmax=1, cmap=cmap, fmt='', linewidths=0, linecolor='lightgray',
-        col_colors=[cluster_cols,ctypes_cols], row_colors= [scDNASupport_Tumor,scDNASupport_NonTumor],
-        col_cluster=False, row_cluster=False, figsize=(width, height), colors_ratio=(0.05, 0.15)
+        col_colors=[cluster_cols,ctypes_cor_cols,ctypes_cols], row_colors= [scDNASupport_Tumor,scDNASupport_NonTumor],
+        col_cluster=False, row_cluster=False, figsize=(width, height), colors_ratio=(0.03, 0.15)
     )
-
-    plt.rcParams["axes.grid"] = False
+    '''
+    #plt.rcParams["axes.grid"] = False
 
     cm.cax.set_visible(False)
     cm.ax_row_dendrogram.set_visible(False)
@@ -184,7 +224,7 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
     cm.ax_heatmap.set_xticks(np.arange(0.5, data.shape[1], 1))
 
     cm.ax_heatmap.set_xticklabels(x_labels, rotation=90, fontsize=8)
-    cm.ax_heatmap.set_yticklabels(data.index, fontsize=8)
+    cm.ax_heatmap.set_yticklabels(data.index, fontsize=7)
 
     '''
     try:
@@ -201,7 +241,7 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
         hratio = .15
 
     try:
-        cm.gs.set_width_ratios([0, 0.05, 1])
+        cm.gs.set_width_ratios([0, 0.08, 1])
         cm.gs.set_height_ratios([0, hratio, hratio, 0.95])
     
     except ValueError:
@@ -213,6 +253,8 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
     cm.gs.update(wspace=0)
 
     cm.ax_heatmap.grid(False)
+
+    cm.savefig(out_file[:-4]+'.png', dpi=600)
     if not out_file:
         plt.show()
     elif data.shape[0] < 50:
@@ -361,6 +403,8 @@ def plot_similarity(data, out_file=None, attachments=None):
     ax.set_ylabel('Cell', fontsize=LABEL_FONTSIZE)
     ax.set_xlabel('Cell', fontsize=LABEL_FONTSIZE)
     ax.set_title('Pairwise Similarity Matrix', fontsize=LABEL_FONTSIZE)
+
+    stdout_fig(fig, out_file[:-4]+'.png', dpi=200)
 
     if data.shape[0] < 50:
         stdout_fig(fig, out_file)

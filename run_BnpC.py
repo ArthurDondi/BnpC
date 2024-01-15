@@ -2,6 +2,7 @@
 
 import argparse
 import pandas as pd
+import numpy as np
 from datetime import datetime
 
 from libs.MCMC import MCMC as MCMC
@@ -251,6 +252,7 @@ def generate_output(args, results, data_raw, data_frac, names, ctypes, scDNA):
 def main(args):
     ctypes = args.ctypes
     ctypes_df = pd.read_csv(ctypes, sep='\t')
+    ctypes_df = ctypes_df[ctypes_df['biopsy']!='Distal']
     ctypes_categ = ["HGSOC", "Mesothelial.cells", "Fibroblasts", "T.NK.cells", "Myeloid.cells", "B.cells", "Endothelial.cells"]
     ctypes_df['celltype_final'] = pd.Categorical(ctypes_df['celltype_final'], ctypes_categ)
     ctypes_df  = ctypes_df.sort_values(by = ['biopsy', 'celltype_final'], ascending=[False,True])
@@ -265,25 +267,25 @@ def main(args):
     )
     ctypes_df = ctypes_df[ctypes_df['barcodes'].isin(data_names[0])]
 
-    import numpy as np
-    rel_muts = np.isfinite(data).mean(axis=0) > 0.01
-    data = data[:,rel_muts]
-    data_frac = data_frac[:,rel_muts]
-    data_names = (data_names[0], data_names[1][rel_muts])
+    cancer_cells_total = len(ctypes_df[ctypes_df['Corrected']=='Cancer'])
 
-    if len(ctypes_df)==0:
-        sys.exit()
+    DP_alpha=args.DPa_prior
+    if DP_alpha[0] < 0 or DP_alpha[1] < 0:
+        DP_alpha = (np.sqrt(cancer_cells_total)-5, 1)
+    else:
+        DP_alpha = DP_alpha
+
     if args.falsePositive >= 0 and args.falseNegative >= 0:
         args.error_update_prob = 0
         import libs.CRP as CRP
         BnpC = CRP.CRP(
-            data, DP_alpha=args.DPa_prior, param_beta=args.param_prior,
+            data, DP_alpha=DP_alpha, param_beta=args.param_prior,
             FN_error=args.falseNegative, FP_error=args.falsePositive,
         )
     else:
         import libs.CRP_learning_errors as CRP
         BnpC = CRP.CRP_errors_learning(
-            data, DP_alpha=args.DPa_prior, param_beta=args.param_prior,
+            data, DP_alpha=DP_alpha, param_beta=args.param_prior,
             FP_mean=args.falsePositive_mean, FP_sd=args.falsePositive_std,
             FN_mean=args.falseNegative_mean, FN_sd=args.falseNegative_std
         )
