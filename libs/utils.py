@@ -151,7 +151,7 @@ def get_mean_hierarchy_assignment(assignments, params_full):
                 bn.move_std(assignments[:, cells], 2, axis=1), axis=1
             )
         # Paper - section 2.3: second criteria
-        cl_ids = assignments[:,cells[0]]
+        cl_ids = np.array([np.argmax(np.bincount(i)) for i in assignments[:,cells]])
         other_cl_id = assignments[:,other]
         no_others = [cl_ids[j] not in other_cl_id[j] for j in range(steps)]
 
@@ -164,9 +164,9 @@ def get_mean_hierarchy_assignment(assignments, params_full):
                 step_idx = np.argwhere(same_cluster).flatten()
 
             for step in step_idx:
-                cl_id = np.argwhere(np.unique(assignments[step]) == cl_ids[step]) \
-                    .flatten()[0]
-                params[i] += params_full[step][cl_id]
+                # cl_id = np.argwhere(np.unique(assignments[step]) == cl_ids[step]) \
+                #     .flatten()[0]
+                params[i] += params_full[step][cl_ids[step]]
             params[i] /= step_idx.size
         # If not, take parameters from all posterior samples
         else:

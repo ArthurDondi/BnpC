@@ -103,9 +103,6 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
         #ctypes = ctypes.sort_values('idx')
         ctypes_cols = ctypes['CellTypes']
 
-        print(cluster_cols)
-        print(ctypes_cols)
-
         data.columns = np.arange(data_in.shape[1])
         data = data[col_order]
 

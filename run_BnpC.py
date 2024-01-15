@@ -264,6 +264,13 @@ def main(args):
         args.input, ctypes_df, transpose=args.transpose, get_names=True
     )
     ctypes_df = ctypes_df[ctypes_df['barcodes'].isin(data_names[0])]
+
+    import numpy as np
+    rel_muts = np.isfinite(data).mean(axis=0) > 0.01
+    data = data[:,rel_muts]
+    data_frac = data_frac[:,rel_muts]
+    data_names = (data_names[0], data_names[1][rel_muts])
+
     if len(ctypes_df)==0:
         sys.exit()
     if args.falsePositive >= 0 and args.falseNegative >= 0:

@@ -117,10 +117,10 @@ def load_data(in_file, ctypes ,transpose=True, get_names=False):
 
     #making data binary based on mut frac
     for idx, row in df.iterrows():
+        threshold = fracs[idx] - 0.3
+        if threshold < 0.3:
+            threshold = 0.3
         for x in df.columns:
-            threshold = fracs[idx] - 0.3
-            if threshold < 0.3:
-                threshold = 0.3
             if row[x] >= threshold:
                 df.at[idx,x] = 1
             elif 0 <= row[x] < threshold:
@@ -135,7 +135,6 @@ def load_data(in_file, ctypes ,transpose=True, get_names=False):
     #df.replace(3, np.nan, inplace=True)
     # replace homozygos mutations with heterozygos
     df.replace(2, 1, inplace=True)
-    print(df.head())
     if get_names:
         return df.values, df_frac.values, (df.index.values, df.columns.values)
     else:
