@@ -267,6 +267,11 @@ def main(args):
     )
     ctypes_df = ctypes_df[ctypes_df['barcodes'].isin(data_names[0])]
 
+    rel_muts = np.isfinite(data).mean(axis=0) > 0
+    data = data[:,rel_muts]
+    data_frac = data_frac[:,rel_muts]
+    data_names = (data_names[0], data_names[1][rel_muts])
+
     cancer_cells_total = len(ctypes_df[ctypes_df['Corrected']=='Cancer'])
 
     DP_alpha=args.DPa_prior
