@@ -123,8 +123,10 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
         cmap.set_bad('grey')
 
         ctypes_cols = ctypes['CellTypes']
-        ctypes_cor_cols = ctypes['Colors_corrected']
-
+        try:
+            ctypes_cor_cols = ctypes['Colors_corrected']
+        except KeyError:
+            ctypes_cor_cols = np.full(ctypes_cols.size, '#000000')
 
         data.index = [i.split('_')[0] for i in data.index]
         scDNA.index = [i.split('_')[0] for i in scDNA.index]
@@ -136,7 +138,7 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
         annot = False
         cm = sns.clustermap(
             data, annot=annot, square=False, vmin=0, vmax=1, cmap=cmap, fmt='', linewidths=0, linecolor='lightgray',
-            col_colors=[ctypes_cols,ctypes_cor_cols,cluster_cols], row_colors= [scDNASupport_Tumor,scDNASupport_NonTumor],
+            col_colors=[ctypes_cols, ctypes_cor_cols,cluster_cols], row_colors= [scDNASupport_Tumor,scDNASupport_NonTumor],
             col_cluster=False, row_cluster=False, figsize=(width, height), colors_ratio=(0.3, 0.3)
     )
 
@@ -144,7 +146,10 @@ def plot_raw_data(data_in, data_raw_in=pd.DataFrame(), out_file=None,
         x_labels = data_in.columns
 
         ctypes_cols = ctypes['CellTypes']
-        ctypes_cor_cols = ctypes['Colors_corrected']
+        try:
+            ctypes_cor_cols = ctypes['Colors_corrected']
+        except KeyError:
+            ctypes_cor_cols = np.full(ctypes_cols.size, '#000000')
 
         data.index = [i.split('_')[0] for i in data.index]
         scDNA.index = [i.split('_')[0] for i in scDNA.index]

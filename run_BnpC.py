@@ -272,11 +272,16 @@ def main(args):
     data_frac = data_frac[:,rel_muts]
     data_names = (data_names[0], data_names[1][rel_muts])
 
-    cancer_cells_total = len(ctypes_df[ctypes_df['Corrected']=='Cancer'])
 
-    DP_alpha=args.DPa_prior
+    DP_alpha = args.DPa_prior
     if DP_alpha[0] < 0 or DP_alpha[1] < 0:
-        DP_alpha = (np.sqrt(cancer_cells_total)-5, 1)
+        try:
+            cancer_cells_total = len(ctypes_df[ctypes_df['Corrected']=='Cancer'])
+        except KeyError:
+            DP_alpha = (np.sqrt(data.shape[0]), 1)
+        else:   
+            DP_alpha = (np.sqrt(cancer_cells_total)-5, 1)
+
     else:
         DP_alpha = DP_alpha
 

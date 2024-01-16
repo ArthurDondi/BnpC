@@ -54,7 +54,7 @@ class CRP:
             self.DP_a_gamma = DP_alpha
         self.DP_a_prior = gamma_fct(*self.DP_a_gamma)
         #self.DP_a = np.sqrt(self.cells_total)
-        self.DP_a = self.DP_a_prior.rvs()
+        self.DP_a = self.DP_a_prior.mean()
 
         # Flexible data - Initialization
         self.CRP_prior = None
