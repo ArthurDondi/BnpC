@@ -258,28 +258,16 @@ class Chain():
         self.results['assignments'][step] = self.model.assignment
 
         if not burn_in:
-            clusters = np.sort(
-                np.fromiter(self.model.cells_per_cluster.keys(), dtype=int)
-            )
-            cluster_ids = np.arange(clusters.size)
-
             if not 'params' in self.results:
                 self.results['params'] = np.zeros(
-                    (step_diff, clusters.size, self.model.muts_total),
+                    (step_diff, self.model.cells_total, self.model.muts_total),
                     dtype=np.float32
                 )
             burn_in_steps = self.results['ML'].size \
                 - self.results['params'].shape[0] + 1
 
-            cl_diff = clusters.size - self.results['params'].shape[1]
-            if cl_diff > 0:
-                self.results['params'] = np.pad(
-                    self.results['params'], [(0,0), (0, cl_diff), (0,0)],
-                    mode='constant'
-                )
-
-            self.results['params'][step - burn_in_steps + 1][cluster_ids] = \
-                self.model.parameters[clusters]
+            self.results['params'][step - burn_in_steps + 1] = \
+                self.model.parameters
 
 
     def _extend_results(self, add_size=None, burn_in=True):
