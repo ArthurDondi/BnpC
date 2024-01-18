@@ -229,6 +229,7 @@ def _get_out_dir(args, prefix=''):
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
+        os.chmod(out_dir, 0o755)
 
     return out_dir
 
